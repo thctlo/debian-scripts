@@ -9,6 +9,11 @@ VERSION="0.01"
 ## eth0 = LAN
 ## eth1 = WAN
 
+# todo, detect lan, detect interface names.
+LAN_RANGE="192.168.0.0/24"
+
+# the can be any location, (/root/bin)
+YOUR_UFW_SCRIPT_LOCATION="/root/bin"
 
 RUNDATE="$(date +%Y%m%d_%H%M%S)"
 CUR_PATH="$(pwd)"
@@ -16,6 +21,11 @@ CUR_PATH="$(pwd)"
 # check for root or sudo.
 if [[ $UID -ne 0 ]]; then
     echo "exiting now, your not a root user or using sudo"
+    exit 1
+fi
+
+if [ ! -d "${YOUR_UFW_SCRIPT_LOCATION}" ]; then 
+    echo "Error, missing : YOUR_UFW_SCRIPT_LOCATION, or unable to detect the folder."
     exit 1
 fi
 
@@ -178,7 +188,6 @@ if [ ! -e /etc/ufw/personal-script ]; then
 	echo "ufw allow out to ${setdns} port 53 comment 'Allow out to (detected from resolv.conf) DNS-${COUNTER} (port 53)'" >> /etc/ufw/personal-script
     done
     # 
-    echo "ufw allow out to 62.212.131.101 port 53 comment 'Allow out to (ISP DNS) (manualy added) (port 53)'" >> /etc/ufw/personal-script
     # NTP: Get the DC hostnames, get the ip numbers and use ip in the firewall rules.
     Get_DomainControlerNames
     for setntp in $DCS_ARRAY_NAMES; do 
@@ -214,11 +223,6 @@ if [ ! -e /etc/ufw/personal-script ]; then
         MXIP=$(host $setMX | awk '{ print $NF }')
 	echo "ufw allow out on eth0 to ${MXIP} proto tcp port 25 comment 'Allow out to (detected from script, MAIL) LAN MX (port 25/tcp)'" >> /etc/ufw/personal-script
     done
-    # temp extra out to mail1 new server.
-    echo "ufw allow out on eth0 to 192.168.249.227 proto tcp port 25 comment 'Allow out to (detected from script, MAIL) LAN MX (port 25/tcp)'" >> /etc/ufw/personal-script
-    echo "ufw allow out on eth1 to any proto tcp port 25 comment 'Allow out to any (INET) MX  (port 25/tcp)'" >> /etc/ufw/personal-script
-    echo "ufw allow in on eth1 to any proto tcp port 25 comment 'Allow in from any (INET) MX (port 25/tcp)'" >> /etc/ufw/personal-script
-
     echo "## ALLOW-OUT: Some needed rules to make apt-get update work for example." >> /etc/ufw/personal-script
     echo "# Ftp/http/https" >> /etc/ufw/personal-script
     echo "ufw allow out 21,80,443/tcp comment 'Allow out ftp/http/https (21,80,443/tcp)'" >> /etc/ufw/personal-script
@@ -234,19 +238,19 @@ if [ ! -e /etc/ufw/personal-script ]; then
     echo " " >> /etc/ufw/personal-script
     echo "# Allow Out, restriced/lan only."  >> /etc/ufw/personal-script
     echo "# Ssh"  >> /etc/ufw/personal-script
-    echo "ufw allow out on eth0 from any to 192.168.249.0/24 proto tcp port 22 comment 'Limit SSH To RTD lan (22/tcp)'" >> /etc/ufw/personal-script
+    echo "ufw allow out on eth0 from any to ${LAN_RANGE} proto tcp port 22 comment 'Limit SSH To RTD lan (22/tcp)'" >> /etc/ufw/personal-script
     echo "# NFS"  >> /etc/ufw/personal-script
-    echo "ufw allow out from any to 192.168.249.0/24 port 111 comment 'Allow out NFS to RTD lan (111)'"  >> /etc/ufw/personal-script
-    echo "ufw allow out from any to 192.168.249.0/24 port 2049 comment 'Allow out NFS to RTD lan (2049)'"  >> /etc/ufw/personal-script
+    echo "ufw allow out from any to ${LAN_RANGE} port 111 comment 'Allow out NFS to RTD lan (111)'"  >> /etc/ufw/personal-script
+    echo "ufw allow out from any to ${LAN_RANGE} port 2049 comment 'Allow out NFS to RTD lan (2049)'"  >> /etc/ufw/personal-script
     echo "# MYSQL/MariaDB" >> /etc/ufw/personal-script
     echo "# Allow MySQL/MariaDB to mail server, for shared spamassassin/bayes database, hosted on mail server." >> /etc/ufw/personal-script
-    echo "ufw allow out on eth0 from any to 192.168.249.227 proto tcp port 3306 comment 'Allow out MySql/MariaDB (port 3306/tcp)'"  >> /etc/ufw/personal-script
+    echo "#ufw allow out on eth0 from any to Add_Your_SQL_IP_Here proto tcp port 3306 comment 'Allow out MySql/MariaDB (port 3306/tcp)'"  >> /etc/ufw/personal-script
     echo "# Samba"  >> /etc/ufw/personal-script
-    echo "ufw allow out on eth0 from any to 192.168.249.0/24 proto tcp port 135 comment 'Allow out to (detected from script, AD-DC) DCE/RPC Locator Service (port 135/tcp)'" >> /etc/ufw/personal-script
-    echo "ufw allow out on eth0 from any to 192.168.249.0/24 proto udp port 137 comment 'Allow out to (detected from script, AD-DC) NetBIOS Name Service (port 137/udp)'" >> /etc/ufw/personal-script
-    echo "ufw allow out on eth0 from any to 192.168.249.0/24 proto udp port 138 comment 'Allow out to (detected from script, AD-DC) NetBIOS Datagram (port 138/udp)'" >> /etc/ufw/personal-script
-    echo "ufw allow out on eth0 from any to 192.168.249.0/24 proto tcp port 139 comment 'Allow out to (detected from script, AD-DC) NetBIOS Session (port 139/tcp)'" >> /etc/ufw/personal-script
-    echo "ufw allow out on eth0 from any to 192.168.249.0/24 proto tcp port 445 comment 'Allow out to (detected from script, AD-DC) SMB over TCP (port 445/tcp)'" >> /etc/ufw/personal-script
+    echo "ufw allow out on eth0 from any to ${LAN_RANGE} proto tcp port 135 comment 'Allow out to (detected from script, AD-DC) DCE/RPC Locator Service (port 135/tcp)'" >> /etc/ufw/personal-script
+    echo "ufw allow out on eth0 from any to ${LAN_RANGE} proto udp port 137 comment 'Allow out to (detected from script, AD-DC) NetBIOS Name Service (port 137/udp)'" >> /etc/ufw/personal-script
+    echo "ufw allow out on eth0 from any to ${LAN_RANGE} proto udp port 138 comment 'Allow out to (detected from script, AD-DC) NetBIOS Datagram (port 138/udp)'" >> /etc/ufw/personal-script
+    echo "ufw allow out on eth0 from any to ${LAN_RANGE} proto tcp port 139 comment 'Allow out to (detected from script, AD-DC) NetBIOS Session (port 139/tcp)'" >> /etc/ufw/personal-script
+    echo "ufw allow out on eth0 from any to ${LAN_RANGE} proto tcp port 445 comment 'Allow out to (detected from script, AD-DC) SMB over TCP (port 445/tcp)'" >> /etc/ufw/personal-script
     echo " " >> /etc/ufw/personal-script
     echo "## ALLOW IN"  >> /etc/ufw/personal-script
     echo "# Web server settings"  >> /etc/ufw/personal-script
@@ -263,9 +267,9 @@ if [ ! -e /etc/ufw/personal-script ]; then
     echo "ufw allow in from any proto udp port 6277 to any comment 'Allow in Spammassassin/DCC (sport 6277/udp)'"  >> /etc/ufw/personal-script
     echo " " >> /etc/ufw/personal-script
     echo " " >> /etc/ufw/personal-script
-    echo "#    # mail settings (Zarafa/Kopano)"  >> /etc/ufw/personal-script
-    echo "#    ufw allow in 236/tcp comment 'Allow in Zarafa/Kopano insecure (236/tcp)'"  >> /etc/ufw/personal-script
-    echo "#    ufw allow in 237/tcp comment 'Allow in Zarafa/Kopano secure (237/tcp)'"  >> /etc/ufw/personal-script
+    echo "#    # mail settings (Kopano)"  >> /etc/ufw/personal-script
+    echo "#    ufw allow in 236/tcp comment 'Allow in Kopano insecure (236/tcp)'"  >> /etc/ufw/personal-script
+    echo "#    ufw allow in 237/tcp comment 'Allow in Kopano secure (237/tcp)'"  >> /etc/ufw/personal-script
     echo "#    # Generic mail settings"  >> /etc/ufw/personal-script
     echo "#    ufw allow in Postfix comment 'Allow in Postfix (25/tcp)'"  >> /etc/ufw/personal-script
     echo "#    ufw allow in POP3 comment 'Allow in pop insecure (110/tcp)'"  >> /etc/ufw/personal-script
@@ -273,11 +277,7 @@ if [ ! -e /etc/ufw/personal-script ]; then
     echo "#    ufw allow in IMAP comment 'Allow in imap insecure (143/tcp)'"  >> /etc/ufw/personal-script
     echo "#    ufw allow in IMAPS comment 'Allow in imaps secure (993/tcp)'"  >> /etc/ufw/personal-script
     echo " " >> /etc/ufw/personal-script
-    echo "# Lan related settings last."  >> /etc/ufw/personal-script
-    echo "#    ufw allow in on eth0 from 192.168.249.0/24 comment 'Allow in, Lan RTD via eth0'"  >> /etc/ufw/personal-script
-    echo "#    ufw allow in on eth0 from 10.249.2.0/24 comment 'Allow in, Lan OBL via eth0'"  >> /etc/ufw/personal-script
-    echo "#    ufw allow in on eth0 from 10.249.3.0/24 comment 'Allow in, Lan DHG via eth0'"  >> /etc/ufw/personal-script
-    echo "#    ufw allow in on eth0 from 10.249.4.0/24 comment 'Allow in, Lan AMV via eth0'"  >> /etc/ufw/personal-script
+    echo "# Lan related settings last, add your own here."  >> /etc/ufw/personal-script
     echo "#    ufw allow 25,587,465/tcp comment 'Allow in, mailservers, (25,587,465/tcp)'" >> /etc/ufw/personal-script
 #
 #### UFW FIREWALL SETTINGS ENDS HERE
