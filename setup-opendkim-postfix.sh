@@ -3,10 +3,12 @@
 # Asuming postfix is already setup and running.
 # Tested on Debian Stretch
 
+# Version 0.1 First release d.d. 2018-03-07
+
 ### CONFIGURATION
 # The Primary email domain, all other settings are defaults and are ok to use. 
 # Changing the domain to you primary email domain is a must.
-OPENDKIM_DOMAIN="bazuin.nl"
+OPENDKIM_DOMAIN=""
 # This folder is used to set/configure the KeyTable, SigningTable and TrustedHosts files.
 OPENDKIM_DIR="/etc/postfix/dkim"
 # The selector; the results in mail20180325 (mailYearMonthDay format)
@@ -20,6 +22,12 @@ OPENDKIM_PORT="8892"
 ### PROGRAM ####################################################################
 set -e
 DATE_NOW="$(date +%Y%m%d)"
+if [ -z "${OPENDKIM_DOMAIN}" ]; then 
+    echo "Error, you must configure the OPENDKIM_DOMAIN parameter"
+    echo "exiting now... "
+    exit 1
+fi
+
 ### Sources to read.
 GoReadThis(){
 echo "# Very Usefull info to ready through."
