@@ -3,12 +3,17 @@
 # Asuming postfix is already setup and running.
 # Tested on Debian Stretch
 
-# Version 0.1 First release d.d. 2018-03-07
+# Version 0.2. d.d 2018-03-08
+# Changes, corrected wrongs in opendkim-genkey.
+# Added better checked after adding new key.
+# Added more sources.
+# Added howto generate the a good service file with opendkim.
+# Small improvements.
 
 ### CONFIGURATION
 # The Primary email domain, all other settings are defaults and are ok to use. 
 # Changing the domain to you primary email domain is a must.
-OPENDKIM_DOMAIN=""
+OPENDKIM_DOMAIN="bazuin.nl"
 # This folder is used to set/configure the KeyTable, SigningTable and TrustedHosts files.
 OPENDKIM_DIR="/etc/postfix/dkim"
 # The selector; the results in mail20180325 (mailYearMonthDay format)
@@ -18,25 +23,24 @@ OPENDKIM_BITS="2048"
 # the "default" opendkim port is used.
 OPENDKIM_PORT="8892"
 
+# ! Note. 
+# some settings are set in /etc/defaults/opendkim.
+# The settings are use to generate the correct opendkim.service file.
+# see the link, differences between opendkim 2.9.2 2.10.x 2.11.x
 
 ### PROGRAM ####################################################################
 set -e
 DATE_NOW="$(date +%Y%m%d)"
-if [ -z "${OPENDKIM_DOMAIN}" ]; then 
-    echo "Error, you must configure the OPENDKIM_DOMAIN parameter"
-    echo "exiting now... "
-    exit 1
-fi
-
 ### Sources to read.
 GoReadThis(){
 echo "# Very Usefull info to ready through."
 echo "# used source to make the script"
-echo "# https://wiki.debian.org/opendkim"
+echo "# https://wiki.debian.org/opendkim and/or (yes its a different page) https://wiki.debian.org/OpenDKIM"
 echo "# https://terminal28.com/how-to-install-and-configure-opendkim-postfix-dns-debian-9-stretch/"
-echo "# https://jschumacher.info/2017/06/upgrading-to-debian-stretch-with-dovecot-postfix-opendkim/"
+echo "# https://jschumacher.info/2017/06/upgrading-to-debian-stretch-with-dovecot-postfix-opendkim/  ! know the difference between opendkim 2.9.2 2.10.x and 2.11.x"
 echo "# https://linode.com/docs/email/postfix/configure-spf-and-dkim-in-postfix-on-debian-8/ ! some usefull info for stretch also."
 echo "# https://blog.thisispedro.com/index.php/2016/08/21/opendkim-and-restricted-dns/"
+echo "# http://www.postfix.org/MILTER_README.html  what is a milter?"
 echo "#"
 echo "# ! These three are very good to read to understand SPF DKIM DMARC setups."
 echo "# http://www.tech-savvy.nl/2017/02/17/antispam-counter-measures-explained-part-1-how-the-sender-policy-framework-really-works/"
@@ -54,9 +58,11 @@ fi
 }
 GenerateKeyOpenDKIM(){
     echo "Generating new key, please wait."
-    opendkim-genkey -D /etc/dkimkeys/ -d ${OPENDKIM_DOMAIN} -s ${OPENDKIM_SELECTOR}${DATE_NOW} -b ${OPENDKIM_BITS} -h rsa-sha256
+    # ! Note, by most show -h rsa-sha256, this is incorrect.
+    opendkim-genkey -r -D /etc/dkimkeys/ -d ${OPENDKIM_DOMAIN} -s ${OPENDKIM_SELECTOR}${DATE_NOW} -b ${OPENDKIM_BITS} -h sha256
 }
 FixRightsOpenDKIM() {
+    echo "setting rights again on dkim files/folders"
     chgrp opendkim ${OPENDKIM_DIR}/*
     chmod u=+rw,g=+r,o=-rwx ${OPENDKIM_DIR}/*
     chown opendkim /etc/dkimkeys/*
@@ -66,10 +72,17 @@ FixRightsOpenDKIM() {
 CheckOpenDKIMdnsKey(){
 echo "# If the DNS is setup you can run the following to check the key."
 echo "opendkim-testkey -d ${OPENDKIM_DOMAIN} -s ${OPENDKIM_SELECTOR}${DATE_NOW} -vvv"
+echo 
+echo "The expected result should look like this : "
+echo "# opendkim-testkey: using default configfile /etc/opendkim.conf"
+echo "# opendkim-testkey: checking key '${OPENDKIM_SELECTOR}${DATE_NOW}._domainkey.${OPENDKIM_DOMAIN}'"
+echo "# opendkim-testkey: key secure"
+echo "# opendkim-testkey: key OK"
 echo
 echo "# If you are using OpenDKIM behind a restrictive network that doesn’t allow all outgoing UDP connections,"
 echo "# you may find some issues when checking authoritative responses for public keys:"
 echo "# ...  query timed out ... or unexpected reply class/type (-1/-1)"
+echo "# Check firewall setting also. ( allow port 53 (tcp+udp)"
 echo
 echo "# The workaround is to set static DNS servers (whatever is allowed in your network/firewall)"
 echo "# in /etc/opendkim.conf using the directive Nameservers"
@@ -127,6 +140,11 @@ if [ $(grep ${OPENDKIM_PORT} < /etc/default/opendkim | wc -l) -eq 0 ]; then
     #sed -i 's/#RUNDIR=\/var\/spool\/postfix/RUNDIR=\/var\/spool\/postfix/g' /etc/default/opendkim
     #sed -i 's/RUNDIR=\/var\/run\/opendkim/#RUNDIR=\/var\/run\/opendkim/g' /etc/default/opendkim
     # ! Note, not everything is setup for unix sockets, that needs more work. 
+
+    # Generate the correct service file.
+    /lib/opendkim/opendkim.service.generate
+    systemctl daemon-reload
+    systemctl restart opendkim
 else
     echo "File /etc/default/opendkim was already modified."
     echo "The port was already modified to ${OPENDKIM_PORT}@localhost"
@@ -162,7 +180,14 @@ EOF
 echo
 echo "Added some defaults, please review this yourself also"
 echo
+elif [ $(grep "${OPENDKIM_SELECTOR}${DATE_NOW}" < ${OPENDKIM_DIR}/KeyTable | wc -l) -eq 0 ]; then
+    echo "Adding new key to KeyTable file".
+    echo "${OPENDKIM_SELECTOR}${DATE_NOW}._domainkey.${OPENDKIM_DOMAIN} ${OPENDKIM_DOMAIN}:${OPENDKIM_SELECTOR}${DATE_NOW}:/etc/dkimkeys/${OPENDKIM_SELECTOR}${DATE_NOW}.private" >> ${OPENDKIM_DIR}/KeyTable
+    KEY_UPDATED="yes"
+else
+    echo "A Keytable key was already added today, review it or remove it to generate a new one."
 fi
+
 # SigningTable
 if [ $(grep ${OPENDKIM_DOMAIN} < ${OPENDKIM_DIR}/SigningTable | wc -l) -eq 0 ]; then
     echo "Detected clean ${OPENDKIM_DIR}/SigningTable"
@@ -176,7 +201,25 @@ EOF
 echo
 echo "Added some defaults, please review this yourself also"
 echo
+elif [ $(grep "${OPENDKIM_SELECTOR}${DATE_NOW}" < ${OPENDKIM_DIR}/SigningTable | wc -l) -eq 0 ]; then
+    echo "Adding new key to SigningTable file".
+    echo "${OPENDKIM_SELECTOR}${DATE_NOW}._domainkey.${OPENDKIM_DOMAIN} ${OPENDKIM_DOMAIN}:${OPENDKIM_SELECTOR}${DATE_NOW}:/etc/dkimkeys/${OPENDKIM_SELECTOR}${DATE_NOW}.private" >> ${OPENDKIM_DIR}/SigningTable
+    KEY_UPDATED="yes"
+else
+    echo "A SigningTable key was already added today, review it or remove it to generate a new one."
 fi
+
+if [ "${KEY_UPDATE}" = "yes" ]; then 
+    systemctl restart opendkim postfix
+    if [ "$?" -ne 0 ]; then
+	echo "ERROR, Something is wrong, unable to restart opendkim and postfix correctly"
+	echo "ERROR, Please check you config NOW !!!! "
+	echo "use : systemctl restart opendkim postfix  when your done."
+	echo "Exiting now....."
+	exit 1
+    fi
+fi
+
 # TrustedHosts
 if [ $(grep $(hostname -f) < ${OPENDKIM_DIR}/TrustedHosts | wc -l) -eq 0 ]; then
     echo "Detected clean ${OPENDKIM_DIR}/TrustedHosts"
@@ -209,7 +252,7 @@ cat << EOF >> /etc/postfix/main.cf
 
 ###### Added for OpenDKIM by script
 milter_default_action = accept
-milter_protocol = 2
+milter_protocol = 6
 smtpd_milters = inet:localhost:${OPENDKIM_PORT}
 non_smtpd_milters = inet:localhost:${OPENDKIM_PORT}
 EOF
@@ -229,6 +272,8 @@ echo
 echo "Use this for the DNS TXT record: "
 if [ ! -f /etc/dkimkeys/${OPENDKIM_SELECTOR}${DATE_NOW}.txt ]; then
     GenerateKeyOpenDKIM
+else
+    echo "Already generated the dkimkey with selector : ${OPENDKIM_SELECTOR}${DATE_NOW}"
 fi
 FixRightsOpenDKIM
 
@@ -237,3 +282,4 @@ echo
 GoReadThis
 echo
 CheckOpenDKIMdnsKey
+
