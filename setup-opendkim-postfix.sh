@@ -13,7 +13,7 @@
 ### CONFIGURATION
 # The Primary email domain, all other settings are defaults and are ok to use. 
 # Changing the domain to you primary email domain is a must.
-OPENDKIM_DOMAIN="bazuin.nl"
+OPENDKIM_DOMAIN=""
 # This folder is used to set/configure the KeyTable, SigningTable and TrustedHosts files.
 OPENDKIM_DIR="/etc/postfix/dkim"
 # The selector; the results in mail20180325 (mailYearMonthDay format)
