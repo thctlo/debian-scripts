@@ -1,0 +1,8 @@
+1) Howto change the logout put of ufw. 
+
+-A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 587 -m comment --comment "[UFW SUBMISSION Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO 587-submission] "
+-A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 465 -m comment --comment "[UFW SMTPS Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO 465-smtps] "
+-A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 143 -m comment --comment "[UFW IMAP Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO 143-imap] "
+-A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 993 -m comment --comment "[UFW IMAPS Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO 993-imaps] "
+-A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 22 -m comment --comment "[UFW SSH Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO 22-ssh] "
+-A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 2222 -m comment --comment "[UFW SSH Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO SSH 2222] "
