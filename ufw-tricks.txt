@@ -1,8 +1,32 @@
-1) Howto change the logout put of ufw. 
+1) Howto change the logout put of ufw.
 
+After installing with for example : ufw-fail2bah-geoip-xtables.sh which enables geo with iptables.
+! Note, backported kernels may not work, just a warning check it if you upgraded your kernel.
+
+in the file : /etc/ufw# cat before.rules just before or after the lines : 
+# allow all on loopback
+-A ufw-before-input -i lo -j ACCEPT
+-A ufw-before-output -o lo -j ACCEPT
+
+# Only allow access to these ports from country NL
 -A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 587 -m comment --comment "[UFW SUBMISSION Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO 587-submission] "
 -A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 465 -m comment --comment "[UFW SMTPS Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO 465-smtps] "
 -A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 143 -m comment --comment "[UFW IMAP Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO 143-imap] "
 -A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 993 -m comment --comment "[UFW IMAPS Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO 993-imaps] "
 -A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 22 -m comment --comment "[UFW SSH Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO 22-ssh] "
--A ufw-before-input -m state --state NEW -m geoip ! --src-cc NL -m tcp -p tcp --dport 2222 -m comment --comment "[UFW SSH Geoip]" -j LOG --log-prefix "[UFW BLOCK GEO SSH 2222] "
+
+
+Since you done see these with the ufw command, looking with iptables shows:
+iptables -nL | grep GEO
+LOG        tcp  --  0.0.0.0/0            0.0.0.0/0            state NEW -m geoip ! --source-country NL  tcp dpt:587 /* [UFW SUBMISSION Geoip] */ LOG flags 0 level 4 prefix "[UFW BLOCK GEO 587-submission"
+LOG        tcp  --  0.0.0.0/0            0.0.0.0/0            state NEW -m geoip ! --source-country NL  tcp dpt:465 /* [UFW SMTPS Geoip] */ LOG flags 0 level 4 prefix "[UFW BLOCK GEO 465-smtps] "
+LOG        tcp  --  0.0.0.0/0            0.0.0.0/0            state NEW -m geoip ! --source-country NL  tcp dpt:143 /* [UFW IMAP Geoip] */ LOG flags 0 level 4 prefix "[UFW BLOCK GEO 143-imap] "
+LOG        tcp  --  0.0.0.0/0            0.0.0.0/0            state NEW -m geoip ! --source-country NL  tcp dpt:993 /* [UFW IMAPS Geoip] */ LOG flags 0 level 4 prefix "[UFW BLOCK GEO 993-imaps] "
+LOG        tcp  --  0.0.0.0/0            0.0.0.0/0            state NEW -m geoip ! --source-country NL  tcp dpt:22 /* [UFW SSH Geoip] */ LOG flags 0 level 4 prefix "[UFW BLOCK GEO 22-ssh] "
+
+ANd this results in the /var/log/ufw.log ( or syslog ) in: 
+Mar 11 16:48:30 core kernel: [366442.757248] [UFW BLOCK GEO 22-ssh] IN=eth0 OUT= MAC=52:54:00:ff:ae:66:80:ac:ac:68:4c:00:08:00 SRC=210.13.64.18 DST=149.210.206.148 LEN=40 TOS=0x00 PREC=0x20 TTL=46 ID=5132 PROTO=TCP SPT=42486 DPT=22 WINDOW=57129 RES=0x00 SYN URGP=0
+Mar 11 16:48:30 core kernel: [366443.012491] [UFW BLOCK GEO 22-ssh] IN=eth0 OUT= MAC=52:54:00:ff:ae:66:80:ac:ac:68:4c:00:08:00 SRC=210.13.64.18 DST=149.210.206.148 LEN=60 TOS=0x00 PREC=0x20 TTL=235 ID=43019 DF PROTO=TCP SPT=37743 DPT=22 WINDOW=14600 RES=0x00 SYN URGP=0
+
+Now its easy to add an custom rule into fail2ban to manage these scanning ips.
+
