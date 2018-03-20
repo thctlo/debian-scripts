@@ -9,4 +9,5 @@ If you have improvements, well, its github, so do you thing.
 | stretch-mariadb-spamassassin-sql.sh | SpamAssassin with MariaDB on Debian stretch. Work in progress. |
 | setup-ufw.sh | Start of a scripted ufw setup. |
 | setup-opendkim-postfix.sh | A script that helps you setting up opendkim. |
+| setup-gnupg.sh| A script to install and setup a base for GnuPG and its agent.|
 | ufw-tricks.txt | Tekst file with some ufw tricks. |
