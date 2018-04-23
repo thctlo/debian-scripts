@@ -11,12 +11,14 @@ VERSION="0.01"
 
 # todo, detect lan, detect interface names.
 LAN_RANGE="192.168.0.0/24"
+SSH_LAN_ONLY="yes"
 
 # the can be any location, (/root/bin)
 YOUR_UFW_SCRIPT_LOCATION="/root/bin"
 
 RUNDATE="$(date +%Y%m%d_%H%M%S)"
 CUR_PATH="$(pwd)"
+DNS_MANUAL="no"
 
 # check for root or sudo.
 if [[ $UID -ne 0 ]]; then
@@ -122,13 +124,17 @@ fi
 ## Menu/Help END
 Get_nameserver_ips(){
 if [ $(grep -n "nameserver" /etc/resolv.conf | grep "127.0." |wc -l ) -ge 1 ]; then
+    DNS_MANUAL="yes"
     echo "Warning: possible caching/forwarind nameserver detected."
     echo "Warning: you might need to set the nameservers manualy please review /etc/ufw/personal-script"
+    echo "DNS is set to allow out to any port 53."
+else
+    DNS_MANUAL="no"
+    # Try to Detect your nameservers.
+    IFS=$'\n'
+    NAMESERVERARRAY="$(grep -n "nameserver" /etc/resolv.conf | awk '{ print $NF }')"
+    unset IFS
 fi
-# Try to Detect your nameservers.
-IFS=$'\n'
-NAMESERVERARRAY="$(grep -n "nameserver" /etc/resolv.conf | awk '{ print $NF }')"
-unset IFS
 }
 
 Get_DomainControlerNames(){
@@ -163,10 +169,15 @@ if [ ! -e /etc/ufw/personal-script ]; then
     echo "#!/bin/bin/bash -e" > /etc/ufw/personal-script
     echo " " >> /etc/ufw/personal-script
     echo "# The ssh rule is ALWAYS the first rull, this may prevent a lockout when you enable ufw." >> /etc/ufw/personal-script
-    echo "# Protect ssh from bruteforce attacks." >> /etc/ufw/personal-script
-    echo "#ufw limit SSH comment 'Limit SSH (22/tcp)'" >> /etc/ufw/personal-script
-    echo "# above allows ssh from internet, below only from primary lan."
-    echo "ufw limit in on eth0 from 192.168.0.0/24 to any proto tcp port 22 comment 'Limit SSH from RTD lan (22/tcp)'" >> /etc/ufw/personal-script
+    echo "# Protect ssh from bruteforce attacks by using the limiting traffic. " >> /etc/ufw/personal-script
+    if [ "${SSH_LAN_ONLY}" = "no" ]
+    then
+	echo "# The line below allows ssh from anywhere." >> /etc/ufw/personal-script
+        echo "ufw limit SSH comment 'Limit SSH (22/tcp)'" >> /etc/ufw/personal-script
+    else
+	echo "# The line below allows ssh only from primary lan." >> /etc/ufw/personal-script
+        echo "ufw limit in on eth0 from ${LAN_RANGE} to any proto tcp port 22 comment 'Limit SSH from RTD lan (22/tcp)'" >> /etc/ufw/personal-script
+    fi
     echo " " >> /etc/ufw/personal-script
     # DEFAULTS.
     echo "# Restrict the firewall and deny in/out/forward by default." >> /etc/ufw/personal-script
@@ -183,10 +194,15 @@ if [ ! -e /etc/ufw/personal-script ]; then
     Get_nameserver_ips
     COUNTER=0
     echo "# DNS is not restricted to udp, if the udp package is to big it will retry on tcp." >> /etc/ufw/personal-script
-    for setdns in $NAMESERVERARRAY; do 
-	COUNTER=$((COUNTER +1))
-	echo "ufw allow out to ${setdns} port 53 comment 'Allow out to (detected from resolv.conf) DNS-${COUNTER} (port 53)'" >> /etc/ufw/personal-script
-    done
+    if [ "${DNS_MANUAL}" = "yes" ]
+    then 
+	echo "ufw allow out to any port 53 comment 'Allow out to (manual) DNS (port 53)'" >> /etc/ufw/personal-script
+    else
+	for setdns in $NAMESERVERARRAY; do 
+	    COUNTER=$((COUNTER +1))
+	    echo "ufw allow out to ${setdns} port 53 comment 'Allow out to (detected from resolv.conf) DNS-${COUNTER} (port 53)'" >> /etc/ufw/personal-script
+	done
+    fi
     # 
     # NTP: Get the DC hostnames, get the ip numbers and use ip in the firewall rules.
     Get_DomainControlerNames
@@ -195,26 +211,28 @@ if [ ! -e /etc/ufw/personal-script ]; then
         HOSTIP=$(host $setntp | awk '{ print $NF }')
 	echo "ufw allow out to ${HOSTIP} port 123 comment 'Allow out to (detected from script, AD-DC) NTP (port 123)'" >> /etc/ufw/personal-script
     done
-    for setdcs in $DCS_ARRAY_NAMES; do 
+    for setdcs in $DCS_ARRAY_NAMES; do
         # The assigned ports needed to query the DC, kerberos ldap ldaps GlobalCatalog ports.
         HOSTIP=$(host $setdcs | awk '{ print $NF }')
-	# Kerberos
-	echo "ufw allow out to ${HOSTIP} port 88 comment 'Allow out to (detected from script, AD-DC) Kerberos (port 88)'" >> /etc/ufw/personal-script
-	echo "ufw allow out to ${HOSTIP} port 464 comment 'Allow out to (detected from script, AD-DC) Kerberos kpasswd (port 464)'" >> /etc/ufw/personal-script
-	# Ldap(s)
-	echo "ufw allow out to ${HOSTIP} port 389 comment 'Allow out to (detected from script, AD-DC) LDAP (port 389)'" >> /etc/ufw/personal-script
-	echo "ufw allow out to ${HOSTIP} port 636 comment 'Allow out to (detected from script, AD-DC) LDAPS (port 636)'" >> /etc/ufw/personal-script
-	# Global Catalog
-	echo "ufw allow out to ${HOSTIP} port 3268 comment 'Allow out to (detected from script, AD-DC) GC (non-ssl) (port 3268)'" >> /etc/ufw/personal-script
-	echo "ufw allow out to ${HOSTIP} port 3269 comment 'Allow out to (detected from script, AD-DC) GC (ssl) (port 3269)'" >> /etc/ufw/personal-script
-	# Samba/SMB/CIFS... etc. 
-	echo "ufw allow out to ${HOSTIP} proto tcp port 135 comment 'Allow out to (detected from script, AD-DC) DCE/RPC Locator Service (port 135/tcp)'" >> /etc/ufw/personal-script
-	echo "ufw allow out to ${HOSTIP} proto udp port 137 comment 'Allow out to (detected from script, AD-DC) NetBIOS Name Service (port 137/udp)'" >> /etc/ufw/personal-script
-	echo "ufw allow out to ${HOSTIP} proto udp port 138 comment 'Allow out to (detected from script, AD-DC) NetBIOS Datagram (port 138/udp)'" >> /etc/ufw/personal-script
-	echo "ufw allow out to ${HOSTIP} proto tcp port 139 comment 'Allow out to (detected from script, AD-DC) NetBIOS Session (port 139/tcp)'" >> /etc/ufw/personal-script
-	echo "ufw allow out to ${HOSTIP} proto tcp port 445 comment 'Allow out to (detected from script, AD-DC) SMB over TCP (port 445/tcp)'" >> /etc/ufw/personal-script
-	echo "ufw allow out to ${HOSTIP} proto tcp port 49152:65535 comment 'Allow out to (detected from script, AD-DC) Dynamic RPC Ports (port 49152:65535/tcp)'" >> /etc/ufw/personal-script
-	echo "ufw allow in from ${HOSTIP} proto tcp port 49152:65535 comment 'Allow in to (detected from script, AD-DC) Dynamic RPC Ports (port 49152:65535/tcp)'" >> /etc/ufw/personal-script
+        # AD DC DNS.
+        echo "ufw allow out to ${HOSTIP} port 53 comment 'Allow out to ADDC-DNS-${COUNTER} (port 53)'" >> /etc/ufw/personal-script
+        # Kerberos
+        echo "ufw allow out to ${HOSTIP} port 88 comment 'Allow out to (detected from script, AD-DC) Kerberos (port 88)'" >> /etc/ufw/personal-script
+        echo "ufw allow out to ${HOSTIP} port 464 comment 'Allow out to (detected from script, AD-DC) Kerberos kpasswd (port 464)'" >> /etc/ufw/personal-script
+        # Ldap(s)
+        echo "ufw allow out to ${HOSTIP} port 389 comment 'Allow out to (detected from script, AD-DC) LDAP (port 389)'" >> /etc/ufw/personal-script
+        echo "ufw allow out to ${HOSTIP} port 636 comment 'Allow out to (detected from script, AD-DC) LDAPS (port 636)'" >> /etc/ufw/personal-script
+        # Global Catalog
+        echo "ufw allow out to ${HOSTIP} port 3268 comment 'Allow out to (detected from script, AD-DC) GC (non-ssl) (port 3268)'" >> /etc/ufw/personal-script
+        echo "ufw allow out to ${HOSTIP} port 3269 comment 'Allow out to (detected from script, AD-DC) GC (ssl) (port 3269)'" >> /etc/ufw/personal-script
+        # Samba/SMB/CIFS... etc.
+        echo "ufw allow out to ${HOSTIP} proto tcp port 135 comment 'Allow out to (detected from script, AD-DC) DCE/RPC Locator Service (port 135/tcp)'" >> /etc/ufw/personal-script
+        echo "ufw allow out to ${HOSTIP} proto udp port 137 comment 'Allow out to (detected from script, AD-DC) NetBIOS Name Service (port 137/udp)'" >> /etc/ufw/personal-script
+        echo "ufw allow out to ${HOSTIP} proto udp port 138 comment 'Allow out to (detected from script, AD-DC) NetBIOS Datagram (port 138/udp)'" >> /etc/ufw/personal-script
+        echo "ufw allow out to ${HOSTIP} proto tcp port 139 comment 'Allow out to (detected from script, AD-DC) NetBIOS Session (port 139/tcp)'" >> /etc/ufw/personal-script
+        echo "ufw allow out to ${HOSTIP} proto tcp port 445 comment 'Allow out to (detected from script, AD-DC) SMB over TCP (port 445/tcp)'" >> /etc/ufw/personal-script
+        echo "ufw allow out to ${HOSTIP} proto tcp port 49152:65535 comment 'Allow out to (detected from script, AD-DC) Dynamic RPC Ports (port 49152:65535/tcp)'" >> /etc/ufw/personal-script
+	echo "ufw allow in on eth0 proto tcp from ${HOSTIP} port 445 to ${THIS_SERVER_IP} port 49152:65535 comment 'Allow in to (detected from script, AD-DC) Dynamic RPC Ports (port 49152:65535/tcp)'" >> /etc/ufw/personal-script
     done
     # MX: Get the MX names within you LAN and allow OUT to these ipnumbers.
     # Asumption: this is a "mail relay" host.  (Internet < port 25 >  This_Host <port 25> Internal mail server.)
