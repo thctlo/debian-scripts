@@ -3,29 +3,29 @@
 # Asuming postfix is already setup and running.
 # Tested on Debian Stretch
 
-# Version 0.2. d.d 2018-03-08
-# Changes, corrected wrongs in opendkim-genkey.
-# Added better checked after adding new key.
-# Added more sources.
-# Added howto generate the a good service file with opendkim.
-# Small improvements.
+# Version 0.3. d.d 2018-05-01
+# Changes, corrected typos
 
 ### CONFIGURATION
-# The Primary email domain, all other settings are defaults and are ok to use. 
-# Changing the domain to you primary email domain is a must.
+# The Primary email domain, ( Note: all other settings are defaults and are ok to use.)
+# Changing the domain to your primary email domain is a must.
 OPENDKIM_DOMAIN=""
+
 # This folder is used to set/configure the KeyTable, SigningTable and TrustedHosts files.
 OPENDKIM_DIR="/etc/postfix/dkim"
-# The selector; the results in mail20180325 (mailYearMonthDay format)
+
+# The selector; this results in mail20180325 (mailYearMonthDay format)
 OPENDKIM_SELECTOR="mail"
+
 # Use 1024 or 2048, Note that 4096 wont work, its to big for DNS entrie
 OPENDKIM_BITS="2048"
-# the "default" opendkim port is used.
+
+# The "default" opendkim port is used.
 OPENDKIM_PORT="8892"
 
 # ! Note. 
 # some settings are set in /etc/defaults/opendkim.
-# The settings are use to generate the correct opendkim.service file.
+# These settings are use to generate the correct opendkim.service file.
 # see the link, differences between opendkim 2.9.2 2.10.x 2.11.x
 
 ### PROGRAM ####################################################################
@@ -33,8 +33,8 @@ set -e
 DATE_NOW="$(date +%Y%m%d)"
 ### Sources to read.
 GoReadThis(){
-echo "# Very Usefull info to ready through."
-echo "# used source to make the script"
+echo "# Very Usefull info to read."
+echo "# My used sources to make this script:"
 echo "# https://wiki.debian.org/opendkim and/or (yes its a different page) https://wiki.debian.org/OpenDKIM"
 echo "# https://terminal28.com/how-to-install-and-configure-opendkim-postfix-dns-debian-9-stretch/"
 echo "# https://jschumacher.info/2017/06/upgrading-to-debian-stretch-with-dovecot-postfix-opendkim/  ! know the difference between opendkim 2.9.2 2.10.x and 2.11.x"
@@ -62,7 +62,7 @@ GenerateKeyOpenDKIM(){
     opendkim-genkey -r -D /etc/dkimkeys/ -d ${OPENDKIM_DOMAIN} -s ${OPENDKIM_SELECTOR}${DATE_NOW} -b ${OPENDKIM_BITS} -h sha256
 }
 FixRightsOpenDKIM() {
-    echo "setting rights again on dkim files/folders"
+    echo "Setting rights again on dkim files/folders."
     chgrp opendkim ${OPENDKIM_DIR}/*
     chmod u=+rw,g=+r,o=-rwx ${OPENDKIM_DIR}/*
     chown opendkim /etc/dkimkeys/*
@@ -72,11 +72,11 @@ FixRightsOpenDKIM() {
 CheckOpenDKIMdnsKey(){
 echo "# If the DNS is setup you can run the following to check the key."
 echo "opendkim-testkey -d ${OPENDKIM_DOMAIN} -s ${OPENDKIM_SELECTOR}${DATE_NOW} -vvv"
-echo 
-echo "The expected result should look like this : "
+echo
+echo "The expected result should look like this :"
 echo "# opendkim-testkey: using default configfile /etc/opendkim.conf"
 echo "# opendkim-testkey: checking key '${OPENDKIM_SELECTOR}${DATE_NOW}._domainkey.${OPENDKIM_DOMAIN}'"
-echo "# opendkim-testkey: key secure"
+echo "# opendkim-testkey: key secure ( or opendkim-testkey: key not secure)"
 echo "# opendkim-testkey: key OK"
 echo
 echo "# If you are using OpenDKIM behind a restrictive network that doesn’t allow all outgoing UDP connections,"
@@ -166,8 +166,8 @@ InternalHosts       file:${OPENDKIM_DIR}/TrustedHosts
 EOF
 else
     echo 
-    echo "Keytable was already done, asumming SigningTable and InternalHosts ExternalIgnoreList also done"
-    echo "The modification is done in : /etc/opendkim.conf"
+    echo "Keytable was already done, asumming SigningTable and InternalHosts ExternalIgnoreList also done."
+    echo "This modification was already done in : /etc/opendkim.conf."
 fi
 
 # KeyTable
@@ -181,7 +181,7 @@ echo
 echo "Added some defaults, please review this yourself also"
 echo
 elif [ $(grep "${OPENDKIM_SELECTOR}${DATE_NOW}" < ${OPENDKIM_DIR}/KeyTable | wc -l) -eq 0 ]; then
-    echo "Adding new key to KeyTable file".
+    echo "Adding a new key to KeyTable file".
     echo "${OPENDKIM_SELECTOR}${DATE_NOW}._domainkey.${OPENDKIM_DOMAIN} ${OPENDKIM_DOMAIN}:${OPENDKIM_SELECTOR}${DATE_NOW}:/etc/dkimkeys/${OPENDKIM_SELECTOR}${DATE_NOW}.private" >> ${OPENDKIM_DIR}/KeyTable
     KEY_UPDATED="yes"
 else
@@ -212,7 +212,7 @@ fi
 if [ "${KEY_UPDATE}" = "yes" ]; then 
     systemctl restart opendkim postfix
     if [ "$?" -ne 0 ]; then
-	echo "ERROR, Something is wrong, unable to restart opendkim and postfix correctly"
+	echo "ERROR, Something is wrong, unable to restart opendkim and/or postfix correctly."
 	echo "ERROR, Please check you config NOW !!!! "
 	echo "use : systemctl restart opendkim postfix  when your done."
 	echo "Exiting now....."
