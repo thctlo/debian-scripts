@@ -30,3 +30,82 @@ Mar 11 16:48:30 core kernel: [366443.012491] [UFW BLOCK GEO 22-ssh] IN=eth0 OUT=
 
 Now its easy to add an custom rule into fail2ban to manage these scanning ips.
 
+
+####################################################################################################
+# /etc/ufw/before.rules
+# Don't delete these required lines, otherwise there will be errors
+*filter
+:ufw-before-input - [0:0]
+:ufw-before-output - [0:0]
+:ufw-before-forward - [0:0]
+:ufw-not-local - [0:0]
+# End required lines
+# Start - Added by LvB Anti-DDOS HTTP/HTTPS (1/2 filter ) IPv4
+:ufw-antiddos-http - [0:0]
+:ufw-antiddos-http-logdrop - [0:0]
+# Stop - Added by LvB Anti-DDOS HTTP/HTTPS (1/2 filter ) IPv4
+
+# Start - Added by LvB Anti-DDOS HTTP/HTTPS (2/2 rules ) IPv4
+# And the rules below the filter part. 2/2 rules
+# limiting the connections per IP at 20 connections / 10 seconds / IP and the packets to 20 packets / second / IP.
+#
+# Enter rule
+-A ufw-before-input -p tcp --dport 80 -j ufw-antiddos-http
+-A ufw-before-input -p tcp --dport 443 -j ufw-antiddos-http
+
+# Limit connections per Class C IPv4
+-A ufw-antiddos-http -p tcp --syn -m connlimit --connlimit-above 50 --connlimit-mask 24 -j ufw-antiddos-http-logdrop
+
+# Limit connections per IP ( 20 connections per sec )
+-A ufw-antiddos-http -m state --state NEW -m recent --name conn_per_ip --set
+-A ufw-antiddos-http -m state --state NEW -m recent --name conn_per_ip --update --seconds 10 --hitcount 20 -j ufw-antiddos-http-logdrop
+
+# Limit packets per IP ( 20 packets per sec  )
+-A ufw-antiddos-http -m recent --name pack_per_ip --set
+-A ufw-antiddos-http -m recent --name pack_per_ip --update --seconds 1 --hitcount 20 -j ufw-antiddos-http-logdrop
+# Finally accept
+-A ufw-antiddos-http -j ACCEPT
+
+# Log
+-A ufw-antiddos-http-logdrop -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix "[UFW ANTIDDOS HTTP DROP] "
+-A ufw-antiddos-http-logdrop -j DROP
+# END - Added by LvB Anti-DDOS HTTP/HTTPS (2/2 rules ) IPv4
+####################################################################################################
+
+####################################################################################################
+# /etc/ufw/before6.rules
+# Don't delete these required lines, otherwise there will be errors
+*filter
+:ufw6-before-input - [0:0]
+:ufw6-before-output - [0:0]
+:ufw6-before-forward - [0:0]
+# End required lines
+
+# Stop - Added by LvB Anti-DDOS HTTP/HTTPS (1/2 filter ) IPv6
+:ufw6-antiddos-http - [0:0]
+:ufw6-antiddos-http-logdrop - [0:0]
+
+# Start - Added by LvB Anti-DDOS HTTP/HTTPS (2/2 rules ) IPv6
+# limiting the connections per IP at 20 connections / 10 seconds / IP and the packets to 20 packets / second / IP.
+# Enter rule
+-A ufw6-before-input -p tcp --dport 80 -j ufw6-antiddos-http
+-A ufw6-before-input -p tcp --dport 443 -j ufw6-antiddos-http
+
+# Limit connections per Class C ( check todo / IPV6 C-class ? )
+-A ufw6-antiddos-http -p tcp --syn -m connlimit --connlimit-above 50 --connlimit-mask 24 -j ufw6-antiddos-http-logdrop
+
+# Limit connections per IP ( 20 connections per sec )
+-A ufw6-antiddos-http -m state --state NEW -m recent --name conn_per_ip --set
+-A ufw6-antiddos-http -m state --state NEW -m recent --name conn_per_ip --update --seconds 10 --hitcount 20 -j ufw6-antiddos-http-logdrop
+
+# Limit packets per IP ( 20 packets per sec  )
+-A ufw6-antiddos-http -m recent --name pack_per_ip --set
+-A ufw6-antiddos-http -m recent --name pack_per_ip --update --seconds 1 --hitcount 20 -j ufw6-antiddos-http-logdrop
+# Finally accept
+-A ufw6-antiddos-http -j ACCEPT
+
+# Log
+-A ufw6-antiddos-http-logdrop -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix "[UFW ANTIDDOS HTTP DROP] "
+-A ufw6-antiddos-http-logdrop -j DROP
+# END - Added by LvB Anti-DDOS HTTP/HTTPS (2/2 rules ) IPv6
+####################################################################################################
