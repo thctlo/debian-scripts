@@ -1,5 +1,7 @@
 #!/bin/bash
-
+# updated 11-sept-2018
+# fix bugs. tested on Debian Stretch
+# 
 # The script installes ufw and iptables with geoip support and fail2ban.
 # It also setups a cron job so the geoip data is updated.
 # After updated, we check if geoip modules is available and if so restart ufw.
@@ -24,10 +26,15 @@ Help_text () {
     echo
 }
 
-if [ -n "$1" ]; then
-    if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+if [ -z "$1" ]
+then
+    if [ "$1" = "-h" ] || [ "$1" = "--help" ]
+    then
 	Help_text
-    exit 0
+       exit 0
+     else
+       Help_text
+       exit 0
     fi
 elif [ "$1" = "--debug" ]; then
     DEBUG="echo"
@@ -50,6 +57,14 @@ if [ "$1" = "--check-install" ]; then
         $DEBUG "Installing missing package ufw."
          apt-get install ufw -y 2> /dev/null
     fi
+    if [ "$(dpkg -l | grep linux-headers-amd64 | tail -n1 | awk '{print $1}')" = "ii" ]; then
+         $DEBUG "Installing missing packages linux-headers-amd64."
+         apt-get install linux-headers-amd64 -y 2> /dev/null
+     fi
+     if [ "$(dpkg -l | grep xtables-addons-dkms | tail -n1 | awk '{print $1}')" = "ii" ]; then
+         $DEBUG "Installing missing packages xtables-addons-dkms."
+         apt-get install xtables-addons-dkms -y 2> /dev/null
+     fi
     if [ "$(dpkg -l | grep xtables-addons-common | tail -n1 | awk '{print $1}')" = "ii" ]; then
         $DEBUG "Installing missing packages xtables-addons-common libtext-csv-xs-perl."
          apt-get install xtables-addons-common libtext-csv-xs-perl -y 2> /dev/null
@@ -132,7 +147,7 @@ EOF
     if [ ! -f /etc/fail2ban/jail.d/zz99custom-ssh.conf ]; then
     $DEBUG "Installing : /etc/fail2ban/jail.d/zz99custom-ssh.conf, please adjust the maxretry and bantime to your needs"
     $DEBUG "Default, People blocked on port 22, get block for the complete server."
-    cat << EOF >> /etc/fail2ban/jail.d/custom-ssh.conf
+    cat << EOF > /etc/fail2ban/jail.d/zz99custom-ssh.conf
 [sshd]
 enabled = true
 banaction = ufw-all
