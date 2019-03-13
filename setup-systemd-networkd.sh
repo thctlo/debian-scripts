@@ -118,7 +118,7 @@ Domains=$(grep search /etc/resolv.conf |awk '{ print $2 }')
 DNS=$(hostname -I|awk '{ print $1 }') 8.8.8.8 8.8.4.4
 # We resolve first through the primary IP of this AD-DC.
 # The google dns is use as fallback, replace these if you have more DC's
-# I suggest is 2 x DNS AD-DC, 1 x DNS internet.
+# I suggest here 2 x DNS AD-DC, 1 x DNS internet.
 
 # IPv4 gateway and primary address.
 Gateway=$(ip route | grep default | awk '{ print $3 }')
