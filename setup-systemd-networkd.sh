@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+# VERSION : 1.0
+# Updated : 2020-05-18
+#
+
+# Intro.
+# This script create the needed systemd network files (ipv4 only for now),
+# for an AD-DC of Domain Member setup.
+# You need to review the file and execute the instructions after.
+# The script itself does NOT change anything to a running server.
+
+
 if [ -z $1 ]
 then
     echo "Usage $(basename $0) dc/member"
@@ -7,11 +18,12 @@ then
 fi
 
 INSTRUCTIONS="
-# Verify you lan-dev-$(ip route | grep default |awk '{ print $5 }').network file: (cat lan-dev-$(ip route | grep default |awk '{ print $5 }').network)
-#  edit it : editor lan-dev-$(ip route | grep default |awk '{ print $5 }').network
+# Verify your file: lan-${1}-dev-$(ip route | grep default |awk '{ print $5 }').network
+#  file: (cat lan-${1}-dev-$(ip route | grep default |awk '{ print $5 }').network)
+#  edit it : editor lan-${1}-dev-$(ip route | grep default |awk '{ print $5 }').network
 # Then when its correct run the following:
 #  mv /etc/network/interfaces{,.backup}
-#  cp lan-dev-$(ip route | grep default |awk '{ print $5 }').network /etc/systemd/network/
+#  cp lan-${1}-dev-$(ip route | grep default |awk '{ print $5 }').network /etc/systemd/network/
 #  systemctl daemon-reload
 #  mv /etc/resolv.conf{,.backup} && ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
 #  systemctl enable systemd-networkd
@@ -58,6 +70,7 @@ LLMNR=no
 Domains=$(grep search /etc/resolv.conf |awk '{ print $2 }')
 
 # lets make use of systemd-timedate and timesyncd for the member servers.
+# we assume the DNS are also the NTP servers.
 NTP=$(host $(grep search /etc/resolv.conf | awk '{ print $2 }')| grep address | awk '{ print $NF }'|tr '\n' ' ')
 
 # DNS resolvers (its safe to mix IPv4 and IPv6)
@@ -69,7 +82,7 @@ DNS=$(host $(grep search /etc/resolv.conf | awk '{ print $2 }')| grep address | 
 # IPv4 gateway and primary IP address.
 Gateway=$(ip -4 route | grep default | awk '{ print $3 }')
 Address=$(hostname -I|awk '{ print $1 }')/24
-" > lan-member-dev-"$(ip route | grep default |awk '{ print $5 }')".network
+" > lan-${1}-dev-"$(ip route | grep default |awk '{ print $5 }')".network
 
 echo "# Config assumes the following:
 # This server has 1 ip, 1 search domain and AD-DC's are also the DNS and TIME servers.
@@ -107,10 +120,12 @@ LLMNR=no
 # this MUST be set to your primary.DNSdomain.tld
 Domains=$(grep search /etc/resolv.conf |awk '{ print $2 }')
 
+# Members
 # lets make use of systemd-timedate, no need anymore to install ntp.
 #NTP=$(host $(grep search /etc/resolv.conf | awk '{ print $2 }')| grep address | awk '{ print $NF }'|tr '\n' ' ')
 # For an AD-DC this is not used, you must setup the time(NTP) daemon.
 # see: https://wiki.samba.org/index.php/Time_Synchronisation
+# Which is not in this script.
 
 # DNS resolvers (safe to mix IPv4 and IPv6)
 # Max 3 DNS entries. ::1 or 127.0.0.1 if you use a cacheing dns.
@@ -123,7 +138,7 @@ DNS=$(hostname -I|awk '{ print $1 }') 8.8.8.8 8.8.4.4
 # IPv4 gateway and primary address.
 Gateway=$(ip route | grep default | awk '{ print $3 }')
 Address=$(hostname -I|awk '{ print $1 }')/24
-" > lan-addc-dev-"$(ip route | grep default |awk '{ print $5 }')".network
+" > lan-${1}-dev-"$(ip route | grep default |awk '{ print $5 }')".network
 
 echo "# Config assumes the following:
 # This AD-DC server has 1 ip, 1 search domain and also the DNS and TIME servers.
