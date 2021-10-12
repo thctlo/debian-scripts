@@ -141,6 +141,5 @@ systemctl daemon-reload
 
 STATUS_CHECK="Current failed;\r $(systemctl --state=failed)"
 
-
 # Send mail
 mail -s "${MAIL_SUBJECT}" "${ADDRESS_TO}" <<< $(echo -e "${MAIL_ALERT_MSG}\n\r${STATUS_CHECK}")
