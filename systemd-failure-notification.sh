@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Systemd failure notifier.
+# Systemd Service Failure Notifier.
 # This script installs and configures whats needed to get an e-mail notify when
 # a systemd services fails. 
 # It used postfix and the mail command, 
@@ -26,7 +26,7 @@ ADDRESS_FROM="$(hostname -s)@$(hostname -d)"
 # The mail subject
 MAIL_SUBJECT="Warning: $(hostname -s): Systemd service failure detected"
 
-# The variable %1 is the %n passed from systemd alterter service
+# The variable %1 is the %n passed from systemd alert service
 MAIL_ALERT_MSG="Warning, systemd service : ${1} failed."
 
 # The needed packages to send out the mail
