@@ -13,7 +13,7 @@
 # where hackers have control with the CIDR Range.
 
 ### 
-VERSION=20220310-1.0
+VERSION=20220310-1.1
 
 # we need to be root or sudo
 if [[ $EUID -ne 0 ]]
@@ -49,9 +49,9 @@ for ((i = 0; i != array_count; i++))
 do
     if [ -n "${GET_IP_INFO[i]}" ]
     then
-        INETNUM="$(echo "${GET_IP_INFO[i]}"|grep -i inetnum)"
-        ROUTE="$(echo "${GET_IP_INFO[i]}"|grep -i route)"
-        CIDR="$(echo "${GET_IP_INFO[i]}"|grep -i cidr)"
+        INETNUM="$(echo "${GET_IP_INFO[i]}"|grep -i -m 1 inetnum)"
+        ROUTE="$(echo "${GET_IP_INFO[i]}"|grep -i -m 1 route)"
+        CIDR="$(echo "${GET_IP_INFO[i]}"|grep -i -m 1 cidr)"
 
         if [ -n "$CIDR" ]
         then
