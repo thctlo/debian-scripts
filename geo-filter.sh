@@ -28,13 +28,17 @@ DEBUG="yes"
 # Configured.. Did you configure the script?
 CONFIGURED="no"
 
+# Example line what you will get in syslog
+# Mar 10 15:17:49 servername geo-filter.sh: DENY connection from IP: 112.85.42.73, country: CN
+
+
 ###### Best is not to change belower here. #########
 # If you do, dont forget to ajust additional files manualy.
 SCRIPT_NAME="$(basename "$0")"
 SCRIPT_LOCATION="/usr/local/sbin"
 ###### CONFIGURATION-End
 
-SCRIPT_VERSION="22020309-1.0"
+SCRIPT_VERSION="22020309-1.1"
 
 ####  Optional extra add fail2ban to this.
 # apt install -y fail2ban sqlite3
