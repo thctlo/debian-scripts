@@ -56,17 +56,14 @@ do
         if [ -n "$CIDR" ]
         then
             USE_CIDR="$(echo "$CIDR"|awk '{ print $NF }')"
-        #    break
         elif [ -n "$ROUTE" ]
         then
             USE_CIDR="$(echo "$ROUTE"|awk '{ print $NF }')"
-        #    break
         elif [ -n "$INETNUM" ]
         then
             CALC_INETNUM1="$(echo $INETNUM|cut -d":" -f2 |cut -d" " -f2)"
             CALC_INETNUM2="$(echo $INETNUM|cut -d":" -f2 |cut -d" " -f4)"
             USE_CIDR="$(netmask -c $CALC_INETNUM1:$CALC_INETNUM2|awk '{ print $NF }')"
-        #    break
         fi
     fi
 done
