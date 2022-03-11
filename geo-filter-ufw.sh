@@ -5,8 +5,10 @@
 
 # Needed : get a free account at maxmind.com
 # https://www.maxmind.com/en/geolite2/signup?lang=en
-# Create a Licence Key and update the info in /etc/GeoIp.conf
-
+# Create a Licence Key and update the info in /etc/GeoIp.conf 
+# (yeah its free)
+# You only need to enable :  EditionIDs GeoLite2-Country
+ 
 ###### CONFIGURATION-Begin
 # UPPERCASE space-separated country codes to ACCEPT/Allow connection from
 ALLOW_COUNTRIES="NL GB EU"
@@ -42,7 +44,7 @@ SCRIPT_LOCATION="/usr/local/sbin"
 
 SCRIPT_VERSION="22020311-1.0"
 
-####  Optional extra add fail2ban to this.
+####  Optional extra add fail2ban to this, thats not in here (yet)..
 # apt install -y fail2ban sqlite3
 
 # Lock down SSH (IPv4 Tested)
@@ -54,7 +56,7 @@ SCRIPT_VERSION="22020311-1.0"
 # sshd: ALL
 # and in /etc/hosts.allow add the line
 #
-# sshd: ALL: aclexec /usr/local/sbin/geo-filter.sh %a
+# sshd: ALL: aclexec /usr/local/sbin/geo-filter-ufw.sh %a
 # Change path to the location where the filter program is.
 
 # we need to be root or sudo
@@ -246,6 +248,7 @@ else
         AutoBlockUFW "$1"
         exit 1
     fi
+    # Log it to syslog
     logger -t ${SCRIPT_NAME} "${RESPONSE} connection from IP: ${1}, country: ${COUNTRY}"
     AutoBlockUFW "$1"
     exit 1
