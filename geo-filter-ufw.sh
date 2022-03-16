@@ -1,5 +1,10 @@
 #!/bin/bash
 
+echo "sorry I detected a bug i need to fix in the code first." 
+echo "It's useable, but site with multiple INETNUM do go wrong, exiting here. "
+
+exit 1
+
 # Tested on Debian Bullseye (11).
 #shellcheck disable=SC2207,SC2086,SC2034
 
